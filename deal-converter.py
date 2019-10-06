@@ -1,5 +1,8 @@
 from __future__ import print_function
-import argparse, sys, warnings
+import argparse, os, sys, warnings
+
+pybcddpath = os.path.realpath(os.path.join(os.path.dirname(__file__), 'pybcdd'))
+sys.path.append(pybcddpath)
 
 from dealconvert import DealConverter
 
@@ -9,6 +12,8 @@ parser = argparse.ArgumentParser(
     epilog='Supported formats: BER BHG BRI CDS CSV DGE DLM DUP PBN RZD.\n' + \
     'Formats are auto-detected based on file extension.\n' + \
     'To display deals on STDOUT, provide "-" as an output file name.')
+parser.add_argument('--jfr', action='store_true',
+                    help='For PBN file, write only JFR DD fields')
 parser.add_argument('input', metavar='INPUT_FILE',
                     help='Input file path')
 parser.add_argument('output', metavar='OUTPUT_FILE', nargs='*',
@@ -21,7 +26,7 @@ def _warning(msg, *args, **kwargs):
 warnings.showwarning = _warning
 
 try:
-    converter = DealConverter(arguments.input)
+    converter = DealConverter(arguments.input, jfr_only=arguments.jfr)
     converter.output(arguments.output)
 except RuntimeError as e:
     print('ERROR: %s' % (str(e)), file=sys.stderr)

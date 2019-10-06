@@ -36,7 +36,11 @@
               W przyszłości rozważane jest wsparcie dla formatu <code>LIN</code>. Jeśli chcesz obsługi jakiegoś innego formatu, pisz jak wyżej.
             </dd>
             <dt>Czemu w pliku PBN nie ma analizy w widne?</dt>
-            <dd>Nie ma, pracuję nad tym. Możesz ją sobie łatwo (i szybko!) wykonać przy pomocy <a href="https://github.com/emkael/bcdd/">BCDD</a>.</dd>
+            <dd>
+              <s>Nie ma, pracuję nad tym. Możesz ją sobie łatwo (i szybko!) wykonać przy pomocy <a href="https://github.com/emkael/bcdd/">BCDD</a>.</s><br />
+              Jak to "nie ma"? Może masz popsuty plik.<br />
+              Jest, wspomagana silnikiem <a href="http://bcalc.w8.pl/" target="_blank">BCalc</a>.
+            </dd>
             <dt>Czemu dostaję mnóstwo ostrzeżeń <kbd>.xxx file format assumes consequent deal numbers from 1</kbd>?</dt>
             <dd>Niektóre formaty nie przechowują numerów rozdań. W takich sytuacjach, zarówno przy imporcie, jak i eksporcie, konwerter zakłada, że rozdania mają kolejne numery, od 1. Może to doprowadzić do zmiany numeracji rozdań, jeśli oryginalny plik nie zaczynał się od rozdania nr 1 albo numeracja zawierała dziury.</dd>
             <dt>Czemu mój PBN nie chce się otworzyć w BigDealu?</dt>
@@ -144,6 +148,10 @@
           <div class="form-check-inline">
             <input class="form-check-input" type="checkbox" name="display" value="yes" id="display-boards" />
             <label class="form-check-label" for="display-boards">Wyświetl podgląd rozkładów</label>
+          </div>
+          <div class="form-check-inline">
+            <input class="form-check-input" type="checkbox" name="analyze" value="yes" id="analyze-boards" disabled="disabled" />
+            <label class="form-check-label" for="analyze-boards">Przeanalizuj rozkłady w widne</label>
           </div>
         </div>
       </form>

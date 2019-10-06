@@ -1,4 +1,8 @@
-import re
+import re, sys, warnings
+
+from bcdd.PBNBoard import PBNBoard
+from bcdd.DDTable import DDTable
+from bcdd.ParScore import ParScore
 
 from . import DealFormat
 from .. import dto
@@ -18,6 +22,10 @@ class PBNField(object):
             return PBNField(key=match.group(1), value=match.group(2))
         return PBNField(None, line)
 
+    def __repr__(self):
+        return '[%s "%s"]' % (self.key, self.value) \
+            if self.key is not None else self.value
+
 class PBNDeal(object):
     __slots__ = ['fields']
 
@@ -32,11 +40,27 @@ class PBNDeal(object):
                 return True
         return False
 
-    def get_field(self, fieldname):
+    def get_field(self, fieldname, obj=False):
         for field in self.fields:
             if field.key == fieldname:
-                return field.value
+                return field if obj else field.value
         return None
+
+    def get_optimum_table(self):
+        table = []
+        found = False
+        for field in self.fields:
+            if field.key == 'OptimumResultTable':
+                table.append(str(field))
+                found = True
+            else:
+                if found:
+                    if field.key is None:
+                        table.append(str(field))
+                    else:
+                        break
+        return table
+
 
 class PBNFormat(DealFormat):
     @property
@@ -71,13 +95,15 @@ class PBNFormat(DealFormat):
             if deal_obj.has_field('Dealer'):
                 deal_dto.dealer = dealers[deal_obj.get_field('Dealer')]
             else:
-                deal_dto.dealer = deal_dto.get_dealer(deal_dto.number)
+                if deal_dto.number is not None:
+                    deal_dto.dealer = deal_dto.get_dealer(deal_dto.number)
             if deal_obj.has_field('Vulnerable'):
                 vulnerability = deal_obj.get_field('Vulnerable')
                 for pair in deal_dto.vulnerable:
                     deal_dto.vulnerable[pair] = vulnerability in [pair, 'All']
             else:
-                deal_dto.vulnerable = deal_dto.get_vulnerability(deal_dto.number)
+                if deal_dto.number is not None:
+                    deal_dto.vulnerable = deal_dto.get_vulnerability(deal_dto.number)
             deal_parts = deal_obj.get_field('Deal').split(':')
             dealer = dealers[deal_parts[0]]
             hands = deal_parts[1].split(' ')
@@ -85,23 +111,43 @@ class PBNFormat(DealFormat):
                 for i, suit in enumerate(hands[hand].split('.')):
                     deal_dto.hands[(hand + dealer) % 4][i] = list(suit)
             result.append(deal_dto)
+            if deal_obj.has_field('OptimumResultTable'):
+                deal_dto.extra_fields += deal_obj.get_optimum_table()
+            for field in ['Ability', 'Minimax', 'OptimumScore']:
+                if deal_obj.has_field(field):
+                    deal_dto.extra_fields.append(
+                        str(deal_obj.get_field(field, True)))
         return result
 
     def output_content(self, out_file, dealset):
         for board in dealset:
-            out_file.write('[Event "%s"]\r\n' % (board.event))
-            out_file.write('[Board "%d"]\r\n' % (board.number))
-            out_file.write('[Dealer "%s"]\r\n' % (
+            lines = []
+            lines.append('[Event "%s"]' % (board.event))
+            lines.append('[Board "%d"]' % (board.number))
+            lines.append('[Dealer "%s"]' % (
                 'NESW'[board.dealer]
             ))
-            out_file.write('[Vulnerable "%s"]\r\n' % (
+            lines.append('[Vulnerable "%s"]' % (
                 ('All' if board.vulnerable['EW'] else 'NS') if
                 board.vulnerable['NS'] else
                 ('EW' if board.vulnerable['EW'] else 'None')
             ))
-            out_file.write('[Deal "N:%s"]\r\n' % (
+            lines.append('[Deal "N:%s"]' % (
                 ' '.join([
                     '.'.join([''.join(suit) for suit in hand])
                     for hand in board.hands
                 ])))
-            out_file.write('\r\n')
+            for field in board.extra_fields:
+                lines.append(field)
+            if self.analyze:
+                try:
+                    dd_board = PBNBoard(lines)
+                    dd_table = DDTable(dd_board).get_dd_table(self.interactive)
+                    dd_contract = ParScore(dd_board).get_par_contract(dd_table)
+                    dd_board.save_dd_table(dd_table, jfr_only=self.jfr_only)
+                    dd_board.save_par_contract(dd_contract, jfr_only=self.jfr_only)
+                    lines = [field.raw_field for field in dd_board.fields]
+                except Exception as e:
+                    warnings.warn('unable to determine double-dummy data: %s' % e)
+            for line in lines + ['']:
+                out_file.write(line + '\r\n')
